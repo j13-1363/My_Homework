@@ -1,0 +1,186 @@
+CREATE TABLE COLLEGE(
+COLLEGE_ID INT PRIMARY KEY, 
+COLLEGE_NAME VARCHAR(100)
+ ); 
+
+
+CREATE TABLE MAJOR( 
+Major_ID INT PRIMARY KEY, 
+Major_NAME VARCHAR(100),
+College_ID INT, 
+foreign key(College_ID)references COLLEGE(College_ID)
+); 
+
+
+CREATE TABLE STUDENT(
+Student_ID VARCHAR(20) PRIMARY KEY, 
+Student_NAME VARCHAR (50),
+Major_ID INT, 
+Student_GRADE VARCHAR (50),
+Student_CLASS VARCHAR (50),
+Student_LNAME VARCHAR (50),
+Student_PWD VARCHAR (50), 
+foreign key(Major_ID)references MAJOR(Major_ID),
+); 
+
+
+CREATE TABLE TEACHER(
+Teacher_ID VARCHAR(20) PRIMARY KEY,
+Teacher_NAME VARCHAR (50),
+College_ID INT,
+Teacher_PWD VARCHAR(50) ,
+foreign key(College_ID)references COLLEGE(College_ID)
+); 
+
+
+CREATE TABLE LESSON( 
+College_ID INT,
+Lesson_ID VARCHAR(20) PRIMARY KEY,
+Lesson_NAME VARCHAR(100),
+Lesson_TIME INT, Lesson_CREDIT FLOAT(20),
+Is_REQUIRED BIT NOT NULL, 
+foreign key(College_ID)references COLLEGE(College_ID),
+); 
+
+
+CREATE TABLE CR( 
+CR_ID VARCHAR (20) PRIMARY KEY, 
+CR_PEOPLENUM INT 
+); 
+
+
+CREATE TABLE ADMINER( 
+Admin_ID VARCHAR (20) PRIMARY KEY,
+Admin_NAME VARCHAR (50),
+Admin_PWD VARCHAR (50)
+);
+
+
+CREATE TABLE LECTURE(
+Lecture_ID VARCHAR(20)PRIMARY KEY, 
+Lesson_ID VARCHAR(20), 
+Lecture_SEM VARCHAR(20), 
+CR_ID VARCHAR(20), 
+Teacher_ID VARCHAR(20), 
+Admin_ID VARCHAR(20), 
+foreign key(Lesson_ID)references LESSON(Lesson_ID), 
+foreign key(CR_ID)references CR(CR_ID), 
+foreign key(Teacher_ID)references TEACHER(Teacher_ID), 
+foreign key(Admin_ID)references ADMINER(Admin_ID)
+);
+
+
+CREATE TABLE SCORE(
+Student_ID VARCHAR(20),
+Lecture_ID VARCHAR(20), 
+Lecture_SCORE FLOAT,
+foreign key(Student_ID)references STUDENT(Student_ID),
+foreign key(Lecture_ID)references LECTURE(Lecture_ID),
+PRIMARY KEY(Student_ID,Lecture_ID)
+); 
+
+
+CREATE TABLE SCORECHANGE(
+Change_ID VARCHAR(20)PRIMARY KEY,
+Lecture_ID VARCHAR(20),
+Student_ID VARCHAR(20),
+Teacher_ID VARCHAR(20),
+Lesson_SCORE FLOAT,
+Change_SCORE FLOAT,
+Change_DAY DATETIME,
+foreign key(Lecture_ID)references LECTURE(Lecture_ID),
+foreign key(Teacher_ID)references TEACHER(Teacher_ID),
+foreign key(Student_ID)references STUDENT(Student_ID),
+);
+
+--查询某专业的学生--
+SELECT s.Student_ID, s.Student_NAME, m.Major_NAME
+FROM STUDENT s
+JOIN MAJOR m ON s.Major_ID = m.Major_ID
+WHERE m.Major_NAME = 'Major's Name';
+
+--查询某教的所有课程--
+SELECT lec.Lecture_ID, le.Lesson_NAME, lec.Lecture_SEM
+FROM LECTURE lec
+JOIN TEACHER t ON lec.Teacher_ID = t.Teacher_ID
+JOIN LESSON le ON lec.Lesson_ID = le.Lesson_ID
+WHERE t.Teacher_NAME = 'Teacher's Name';
+
+--查询教授某课程的老师--
+SELECT DISTINCT t.Teacher_NAME
+FROM LECTURE lec
+JOIN LESSON le ON lec.Lesson_ID = le.Lesson_ID
+JOIN TEACHER t ON lec.Teacher_ID = t.Teacher_ID
+WHERE le.Lesson_NAME = 'Lesson's Name';
+
+--查询某讲授课的成绩排行--
+SELECT s.Student_NAME, sc.Lecture_SCORE
+FROM SCORE sc
+JOIN LECTURE lec ON sc.Lecture_ID = lec.Lecture_ID
+JOIN LESSON le ON lec.Lesson_ID = le.Lesson_ID
+JOIN STUDENT s ON sc.Student_ID = s.Student_ID
+WHERE le.Lesson_NAME = 'Lessonr's Name'
+ORDER BY sc.Lecture_SCORE DESC;
+
+--查询某学生的全部成绩--
+SELECT le.Lesson_NAME, sc.Lecture_SCORE, lec.Lecture_SEM
+FROM SCORE sc
+JOIN LECTURE lec ON sc.Lecture_ID = lec.Lecture_ID
+JOIN LESSON le ON lec.Lesson_ID = le.Lesson_ID
+JOIN STUDENT s ON sc.Student_ID = s.Student_ID
+WHERE s.Student_NAME = 'Student's Name';
+
+--查询某学期某学生的课程成绩--
+SELECT 
+    le.Lesson_NAME AS 课程名称,
+    sc.Lecture_SCORE AS 成绩
+FROM SCORE sc
+JOIN LECTURE lec ON sc.Lecture_ID = lec.Lecture_ID
+JOIN LESSON le ON lec.Lesson_ID = le.Lesson_ID
+JOIN STUDENT s ON sc.Student_ID = s.Student_ID
+WHERE 
+    s.Student_NAME = 'Student's Name' 
+AND lec.Lecture_SEM = 'SEM's Time';
+
+--修改成绩触发器--
+CREATE TRIGGER trg_AfterUpdateScore
+ON SCORE
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO SCORECHANGE (
+        Change_ID,
+        Lecture_ID,
+        Student_ID,
+        Teacher_ID,
+        Lesson_SCORE,
+        Change_SCORE,
+        Change_DAY
+    )
+    SELECT 
+        LEFT(REPLACE(NEWID(),'-',''),5) AS Change_ID,
+        i.Lecture_ID,
+        i.Student_ID,
+        l.Teacher_ID,
+        d.Lecture_SCORE AS Original_Score,
+        i.Lecture_SCORE AS New_Score,
+        GETDATE()
+    FROM 
+        inserted i
+        INNER JOIN deleted d ON i.Student_ID = d.Student_ID 
+                             AND i.Lecture_ID = d.Lecture_ID
+        INNER JOIN LECTURE l ON i.Lecture_ID = l.Lecture_ID
+    WHERE 
+        i.Lecture_SCORE <> d.Lecture_SCORE; -- 仅记录实际分数变更
+END
+
+-- 修改某学生在某课程的成绩
+UPDATE SCORE 
+SET Lecture_SCORE = 85.0
+WHERE Student_ID = 'Student's ID' AND Lecture_ID = 'Lecture's ID”';
+
+-- 验证结果
+SELECT * FROM SCORECHANGE WHERE Student_ID = 'Student's ID';
+SELECT * FROM SCORE WHERE Student_ID = 'Student's ID';

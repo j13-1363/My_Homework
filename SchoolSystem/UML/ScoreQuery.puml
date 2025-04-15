@@ -1,0 +1,67 @@
+@startuml
+!theme plain
+
+interface ScoreQueryDAO {
+  + findByStudentId(studentId: String): List<Score>
+  + findByTeacherId(teacherId: String): List<Score>
+}
+
+class ScoreQueryStudentDAO {
+  + findByStudentId(studentId: String): List<Score>
+  - buildStudentScoreQuery(): String
+}
+
+class ScoreQueryTeacherDAO {
+  + findByTeacherId(teacherId: String): List<Score>
+  + updateScore(...): void
+  - buildTeacherScoreQuery(): String
+}
+
+class ScoreQueryService {
+  - dao: ScoreQueryDAO
+  + query(userId: String): List<Score>
+}
+
+class Score {
+  - studentId: String
+  - studentName: String
+  - lectureId: String
+  - lessonName: String
+  - teacherName: String
+  - score: double
+  + toString(): String
+}
+
+class DBUtil {
+  + getConnection(): Connection
+}
+
+'----- 实现关系 -----
+ScoreQueryDAO <|.. ScoreQueryStudentDAO
+ScoreQueryDAO <|.. ScoreQueryTeacherDAO
+
+'----- 依赖关系 -----
+ScoreQueryService --> ScoreQueryDAO : 动态选择实现
+ScoreQueryStudentDAO --> DBUtil : 获取连接
+ScoreQueryTeacherDAO --> DBUtil : 获取连接
+ScoreQueryStudentDAO --> Score : 返回结果集
+ScoreQueryTeacherDAO --> Score : 返回结果集
+
+'----- 组合关系 -----
+ScoreQueryService *-- ScoreQueryStudentDAO : 学生模式
+ScoreQueryService *-- ScoreQueryTeacherDAO : 教师模式
+
+'----- 注解 -----
+note top of ScoreQueryService
+1. 根据用户类型(student/teacher)初始化DAO
+2. 调用DAO.findByXXXId()方法
+3. 返回Score对象集合
+end note
+
+note right of ScoreQueryTeacherDAO
+特殊功能：
+- 教师可更新成绩
+- 关联更多表（LECTURE/LESSON/TEACHER）
+end note
+
+@enduml

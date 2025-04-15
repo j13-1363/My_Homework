@@ -1,0 +1,59 @@
+@startuml
+!theme plain
+
+interface LoginDAO {
+  + validate(id: String, password: String): boolean
+}
+
+class StudentDAO {
+  + validate(id: String, password: String): boolean
+  + updatePassword(studentId: String, newPassword: String): void
+}
+
+class TeacherDAO {
+  + validate(id: String, password: String): boolean
+  + updatePassword(teacherId: String, newPassword: String): void
+}
+
+class AdminDAO {
+  + validate(id: String, password: String): boolean
+}
+
+class LoginService {
+  - userType: String
+  - userId: String
+  + login(userType: String, id: String, password: String): boolean
+  + getCurrentUser(): User
+}
+
+class User {
+  - id: String
+  - type: String
+  + getId(): String
+  + getType(): String
+}
+
+class DBUtil {
+  + getConnection(): Connection
+}
+
+'----- 实现关系 -----
+LoginDAO <|.. StudentDAO
+LoginDAO <|.. TeacherDAO
+LoginDAO <|.. AdminDAO
+
+'----- 依赖关系 -----
+LoginService --> LoginDAO : 依赖接口
+LoginService --> User : 创建并返回
+StudentDAO --> DBUtil : 获取连接
+TeacherDAO --> DBUtil : 获取连接
+AdminDAO --> DBUtil : 获取连接
+
+'----- 调用流程注解 -----
+note top of LoginService
+1. 根据用户类型选择具体DAO
+2. 调用DAO.validate()验证密码
+3. 创建User对象返回
+end note
+
+@enduml

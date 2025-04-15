@@ -1,0 +1,66 @@
+@startuml
+!theme plain
+
+interface RegistrationDAO {
+  + register(user: User, password: String): boolean
+}
+
+class StudentRegistrationDAO {
+  + register(user: User, password: String): boolean
+}
+
+class TeacherRegistrationDAO {
+  + register(user: User, password: String): boolean
+}
+
+class AdminRegistrationDAO {
+  + register(user: User, password: String): boolean
+}
+
+class RegistrationService {
+  - registrationDAO: RegistrationDAO
+  + registerUser(userType: String, user: User, password: String): boolean
+}
+
+class User {
+  - id: String
+  - type: String
+  - name: String
+  - email: String
+  + getId(): String
+  + getType(): String
+  + getName(): String
+  + getEmail(): String
+}
+
+class InputUtil {
+  + readString(prompt: String): String
+  + validateEmail(email: String): boolean
+  + validatePassword(password: String): boolean
+}
+
+class DBUtil {
+  + getConnection(): Connection
+}
+
+'----- 实现关系 -----
+RegistrationDAO <|.. StudentRegistrationDAO
+RegistrationDAO <|.. TeacherRegistrationDAO
+RegistrationDAO <|.. AdminRegistrationDAO
+
+'----- 依赖关系 -----
+RegistrationService --> RegistrationDAO : 依赖接口
+RegistrationService --> InputUtil : 输入验证
+RegistrationService --> User : 操作模型
+StudentRegistrationDAO --> DBUtil : 获取连接
+TeacherRegistrationDAO --> DBUtil : 获取连接
+AdminRegistrationDAO --> DBUtil : 获取连接
+
+'----- 调用流程注解 -----
+note top of RegistrationService
+1. 根据用户类型选择具体DAO
+2. 调用InputUtil验证邮箱/密码格式
+3. 调用DAO.register()插入用户数据
+end note
+
+@enduml
